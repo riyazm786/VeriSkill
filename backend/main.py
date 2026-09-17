@@ -1,4 +1,4 @@
-
+import os
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pathlib import Path
@@ -28,34 +28,25 @@ app = FastAPI(
 # ============================================================
 # CORS
 # ============================================================
-import os
 FRONTEND_URL = os.getenv(
     "FRONTEND_URL",
     "http://localhost:5173"
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        FRONTEND_URL
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173"
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+ALLOWED_ORIGINS = [
+    FRONTEND_URL,
+    "https://veri-skill.vercel.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # ============================================================
 # UPLOADS
