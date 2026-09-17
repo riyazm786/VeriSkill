@@ -1,5 +1,7 @@
 import json
 import re
+import time
+import random
 from typing import Any
 
 from services.llm_service import client, MODEL_NAME
@@ -50,6 +52,63 @@ def _score_label(score: float) -> str:
         return "Requires further verification"
 
     return "Weak demonstration"
+
+def _generate_with_retry(
+    prompt: str,
+    max_retries: int = 3
+):
+    """
+    Call Gemini with retry logic for temporary
+    503/429/5xx service errors.
+    """
+
+    for attempt in range(max_retries + 1):
+
+        try:
+            print(
+                f"Gemini evaluation attempt "
+                f"{attempt + 1}/{max_retries + 1}"
+            )
+
+            return client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt
+            )
+
+        except Exception as error:
+
+            error_text = str(error)
+
+            is_retryable = any(
+                code in error_text
+                for code in [
+                    "503",
+                    "UNAVAILABLE",
+                    "429",
+                    "RESOURCE_EXHAUSTED",
+                    "500",
+                    "INTERNAL",
+                    "502",
+                    "BAD_GATEWAY",
+                    "504",
+                    "DEADLINE_EXCEEDED"
+                ]
+            )
+
+            if not is_retryable:
+                raise
+
+            if attempt >= max_retries:
+                raise
+
+            delay = (2 ** attempt) + random.uniform(0, 1)
+
+            print(
+                f"Gemini temporarily unavailable. "
+                f"Retrying in {delay:.1f} seconds..."
+            )
+
+            time.sleep(delay)
 
 
 def evaluate_assessment_batch(
@@ -195,14 +254,13 @@ Here is the assessment:
 
     try:
 
-        response = client.models.generate_content(
-            model=MODEL_NAME,
-            contents=prompt
+        response = _generate_with_retry(
+            prompt
         )
 
         result = extract_json(
             response.text
-        )
+            )
 
         skills = result.get(
             "skills",
